@@ -101,14 +101,20 @@ try {
       JSON.stringify(z.toJSONSchema(storySchema), null, 2) + "\n",
     );
   } else if (mode === "build") {
+    const { playerCatalog } = await server.ssrLoadModule(
+      "/src/runtime/catalog.ts",
+    );
     await mkdir("public", { recursive: true });
-    await writeFile("public/work.json", JSON.stringify(work, null, 2) + "\n");
+    await writeFile(
+      "public/work.json",
+      JSON.stringify(playerCatalog(work), null, 2) + "\n",
+    );
     const blank = compileStory(
       JSON.parse(await readFile("stories/blank/story.json", "utf8")),
     ).work;
     await writeFile(
       "public/blank-work.json",
-      JSON.stringify(blank, null, 2) + "\n",
+      JSON.stringify(playerCatalog(blank), null, 2) + "\n",
     );
     {
       const preview = compileStory(
@@ -116,7 +122,7 @@ try {
       ).work;
       await writeFile(
         "public/test-work.json",
-        JSON.stringify(preview, null, 2) + "\n",
+        JSON.stringify(playerCatalog(preview), null, 2) + "\n",
       );
     }
   } else if (!["validate", "test"].includes(mode))
