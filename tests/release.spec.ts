@@ -10,7 +10,7 @@ test("published default matches full test preview, four dock apps and updated st
   expect(work.data).toEqual(preview.data);
   expect(
     work.apps.filter((a: { installed: boolean }) => a.installed),
-  ).toHaveLength(49);
+  ).toHaveLength(40);
   expect(work.nodes).toHaveLength(0);
   expect(
     work.apps.filter(

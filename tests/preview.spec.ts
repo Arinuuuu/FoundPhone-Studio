@@ -1,19 +1,22 @@
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
+import { playerCatalog } from "../src/runtime/catalog";
 import { compileStory } from "../src/story-engine/compiler";
 test("development preview contains generic placeholders", async ({
   page,
   request,
 }) => {
   const standard = await (await request.get("/blank-work.json")).json();
-  const preview = compileStory(
-    JSON.parse(readFileSync("stories/test-preview/story.json", "utf8")),
-  ).work;
+  const preview = playerCatalog(
+    compileStory(
+      JSON.parse(readFileSync("stories/test-preview/story.json", "utf8")),
+    ).work,
+  );
   await page.route("**/test-work.json", (r) => r.fulfill({ json: preview }));
   expect(Object.values(standard.data).flat()).toHaveLength(0);
   expect(
     preview.apps.filter((a: { installed: boolean }) => a.installed),
-  ).toHaveLength(49);
+  ).toHaveLength(40);
   expect(preview.id).not.toBe(standard.id);
   for (const app of preview.apps)
     expect(preview.data[app.id]?.length).toBeGreaterThan(0);
@@ -22,7 +25,7 @@ test("development preview contains generic placeholders", async ({
   await page
     .getByRole("button", { name: "打开App Store", exact: true })
     .click();
-  await expect(page.locator(".runtime-library-row")).toHaveCount(49);
+  await expect(page.locator(".runtime-library-row")).toHaveCount(40);
   await page.getByRole("button", { name: "关闭App管理" }).click();
   await page.getByRole("button", { name: "控制中心", exact: true }).click();
   await expect(page.locator(".device-control")).toHaveCSS("opacity", "1");

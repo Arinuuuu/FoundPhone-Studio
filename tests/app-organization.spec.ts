@@ -21,7 +21,7 @@ async function open(page: Page, name: string) {
     "none",
   );
 }
-test("old preview folders migrate, WeChat and Douyin appear directly and store has functional categories", async ({
+test("old preview layouts cannot restore removed apps and store retains international apps", async ({
   page,
 }) => {
   const w = compileStory(
@@ -29,8 +29,11 @@ test("old preview folders migrate, WeChat and Douyin appear directly and store h
   ).work;
   const old = defaultLayout(w);
   old.previewLayoutRevision = 0;
-  for (const id of ["wechat", "douyin"])
-    old.apps.find((a) => a.id === id)!.folder = "国内";
+  for (const id of ["wechat", "douyin"]) {
+    const app = old.apps.find((a) => a.id === id)!;
+    app.folder = "国内";
+    app.installed = app.visible = true;
+  }
   old.apps.find((a) => a.id === "instagram")!.folder = "国际";
   await page.addInitScript(
     ({ key, value }) => {
@@ -41,8 +44,8 @@ test("old preview folders migrate, WeChat and Douyin appear directly and store h
   await page.goto("/?preview=test");
   await page.getByRole("button", { name: "轻触解锁" }).click();
   await expect(page.locator(".lock-screen")).toHaveCount(0);
-  await expect(page.locator('[data-home-key="wechat"]')).toBeInViewport();
-  await expect(page.locator('[data-home-key="douyin"]')).toBeInViewport();
+  await expect(page.locator('[data-home-key="wechat"]')).toHaveCount(0);
+  await expect(page.locator('[data-home-key="douyin"]')).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "打开文件夹国内", exact: true }),
   ).toHaveCount(0);
@@ -60,35 +63,47 @@ test("old preview folders migrate, WeChat and Douyin appear directly and store h
   await expect(page.locator(".runtime-library-row").first()).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: "轻触解锁" }).click();
-  await expect(page.locator('[data-home-key="wechat"]')).toBeInViewport();
+  await expect(page.locator('[data-home-key="wechat"]')).toHaveCount(0);
 });
-test("Weibo has no X action row while X retains its own navigation", async ({
+test("all player entries exclude mainland apps and retain international apps", async ({
   page,
 }) => {
+  for (const entry of ["/", "/?preview=test", "/?template=blank"]) {
+    await page.goto(entry);
+    await page.getByRole("button", { name: "轻触解锁" }).click();
+    await page
+      .getByRole("button", { name: "打开App Store", exact: true })
+      .click();
+    const search = page.getByPlaceholder("搜索全部App");
+    for (const name of [
+      "微信",
+      "QQ",
+      "微博",
+      "小红书",
+      "抖音",
+      "哔哩哔哩",
+      "支付宝",
+      "淘宝",
+      "网易云音乐",
+    ]) {
+      await search.fill(name);
+      await expect(page.locator(".runtime-library-row")).toHaveCount(0);
+    }
+    for (const name of [
+      "KakaoTalk",
+      "Instagram",
+      "YouTube",
+      "TikTok",
+      "WhatsApp",
+    ]) {
+      await search.fill(name);
+      await expect(page.locator(".runtime-library-row")).toHaveCount(1);
+    }
+  }
+});
+test("X retains its own navigation", async ({ page }) => {
   await page.goto("/?preview=test");
   await page.getByRole("button", { name: "轻触解锁" }).click();
-  await open(page, "微博");
-  await expect(page.locator(".weibo-actions button")).toHaveCount(3);
-  await page
-    .locator(".phone-screen")
-    .screenshot({ path: "outputs/release/weibo-clean-feed.png" });
-  await page.locator(".weibo-post .social-body").click();
-  await expect(page.locator(".weibo-post-detail")).toBeVisible();
-  await expect(
-    page.locator(
-      ".weibo-bottom-actions,.x-detail-bottom,.weibo-post-detail .post-detail-actions",
-    ),
-  ).toHaveCount(0);
-  await expect(page.locator(".post-detail-reply")).toHaveCount(1);
-  await page.getByRole("textbox", { name: "回复帖子" }).fill("测试评论");
-  await page.getByRole("button", { name: "发送回复", exact: true }).click();
-  await expect(
-    page.locator(".post-detail-comment").filter({ hasText: "测试评论" }),
-  ).toBeVisible();
-  await page
-    .locator(".phone-screen")
-    .screenshot({ path: "outputs/release/weibo-clean-detail.png" });
-  await page.getByRole("button", { name: "返回桌面", exact: true }).click();
   await open(page, "X");
   await page.locator(".kzxx").first().click();
   await expect(page.locator(".x-detail-bottom button")).toHaveCount(5);
